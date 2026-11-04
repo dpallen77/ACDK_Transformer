@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { validate } from "./validate.js";
 
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 export type JsonObject = { [key: string]: Json };
@@ -36,7 +37,16 @@ export function loadEnvironment(projectDir: string, envName: string): JsonObject
   if (!fs.existsSync(envFile)) throw new Error(`No environment file: ${envFile}`);
   const commonFile = path.join(dir, "common.json");
   const common = fs.existsSync(commonFile) ? readJson(commonFile) : {};
-  return deepMerge(common, readJson(envFile));
+  const envValues = readJson(envFile);
+  validate("environment", common, `environments/common.json`);
+  validate("environment", envValues, `environments/${envName}.json`);
+
+  const merged = deepMerge(common, envValues);
+  // Individual files may omit stackName; the merged result may not.
+  if (merged.stackName === undefined) {
+    throw new Error(`"stackName" must be set in environments/common.json or environments/${envName}.json`);
+  }
+  return merged;
 }
 
 /** Every resources/*.json file, with same-named lists concatenated. */
@@ -45,8 +55,10 @@ export function loadResources(projectDir: string): JsonObject {
   const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(".json")).sort() : [];
   const out: JsonObject = {};
   for (const file of files) {
-    for (const [key, value] of Object.entries(readJson(path.join(dir, file)))) {
-      if (!Array.isArray(value)) throw new Error(`resources/${file}: "${key}" must be a list`);
+    const content = readJson(path.join(dir, file));
+    validate("resources", content, `resources/${file}`);
+    for (const [key, value] of Object.entries(content)) {
+      if (key === "$schema" || !Array.isArray(value)) continue;
       const existing = out[key];
       out[key] = Array.isArray(existing) ? [...existing, ...value] : value;
     }

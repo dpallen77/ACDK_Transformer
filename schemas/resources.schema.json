@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/dpallen77/ACDK_Transformer/schemas/resources.schema.json",
+  "title": "ACDK resource file",
+  "description": "A file in resources/. Any value may instead be an ${env.<path>} placeholder that is filled in from the environment files.",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "buckets": {
+      "description": "S3 buckets.",
+      "type": "array",
+      "items": { "$ref": "#/definitions/bucket" }
+    },
+    "webApps": {
+      "description": "Containerised web apps on ECS Express Mode (the AWS counterpart of an Azure App Service).",
+      "type": "array",
+      "items": { "$ref": "#/definitions/webApp" }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "placeholder": {
+      "description": "A value taken from the environment files, e.g. ${env.webApp.cpu}.",
+      "type": "string",
+      "pattern": "^\\$\\{env\\.[A-Za-z0-9_.-]+\\}$"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9-]*$",
+      "maxLength": 64
+    },
+    "bucket": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "description": "Logical name of the bucket, unique within the stack.",
+          "$ref": "#/definitions/name"
+        },
+        "versioned": {
+          "description": "Keep previous versions of objects. Default: false.",
+          "anyOf": [{ "type": "boolean" }, { "$ref": "#/definitions/placeholder" }]
+        }
+      },
+      "additionalProperties": false
+    },
+    "webApp": {
+      "type": "object",
+      "required": ["name", "image"],
+      "properties": {
+        "name": {
+          "description": "Service name, unique within the stack.",
+          "$ref": "#/definitions/name"
+        },
+        "image": {
+          "description": "An existing container image URI (ECR, Docker Hub, ...).",
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "description": "Port the container listens on. Default: 80.",
+          "anyOf": [
+            { "type": "integer", "minimum": 1, "maximum": 65535 },
+            { "$ref": "#/definitions/placeholder" }
+          ]
+        },
+        "cpu": {
+          "description": "vCPU units: \"256\" = 0.25 vCPU. Default: \"256\".",
+          "anyOf": [
+            { "type": "string", "enum": ["256", "512", "1024", "2048", "4096", "8192", "16384"] },
+            { "$ref": "#/definitions/placeholder" }
+          ]
+        },
+        "memory": {
+          "description": "Memory in MiB, e.g. \"512\". Default: \"512\".",
+          "anyOf": [
+            { "type": "string", "pattern": "^[1-9][0-9]*$" },
+            { "$ref": "#/definitions/placeholder" }
+          ]
+        },
+        "healthCheckPath": {
+          "description": "Path the load balancer checks. Default: \"/\".",
+          "type": "string",
+          "pattern": "^(/|\\$\\{env\\.)"
+        },
+        "environment": {
+          "description": "Environment variables for the container.",
+          "anyOf": [
+            { "type": "object", "additionalProperties": { "type": "string" } },
+            { "$ref": "#/definitions/placeholder" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

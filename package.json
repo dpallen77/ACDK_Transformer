@@ -11,10 +11,11 @@
     "start": "node dist/index.js",
     "synth": "tsx src/index.ts synth",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "node --import tsx --test test/*.test.ts"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
@@ -23,6 +24,7 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "ajv": "^8.20.0",
     "aws-cdk-lib": "^2.275.0",
     "constructs": "^10.8.1",
     "js-yaml": "^5.5.0"

@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/dpallen77/ACDK_Transformer/schemas/environment.schema.json",
+  "title": "ACDK environment file",
+  "description": "environments/common.json or environments/<env>.json. The environment file is merged over common.json; stackName must be set in one of them. Keys not listed here are your own settings, referenced from resource files with ${env.<path>}.",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "stackName": {
+      "description": "Name of the CloudFormation stack.",
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9-]*$",
+      "maxLength": 128
+    },
+    "account": {
+      "description": "12-digit AWS account ID.",
+      "type": "string",
+      "pattern": "^[0-9]{12}$"
+    },
+    "region": {
+      "description": "AWS region, e.g. us-west-2.",
+      "type": "string",
+      "pattern": "^[a-z]{2}(-gov)?-[a-z]+-[0-9]$"
+    },
+    "tags": {
+      "description": "Tags added to every resource in the stack.",
+      "type": "object",
+      "propertyNames": { "maxLength": 128 },
+      "additionalProperties": { "type": "string", "maxLength": 256 }
+    }
+  },
+  "additionalProperties": true
+}
