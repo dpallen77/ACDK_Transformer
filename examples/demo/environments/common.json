@@ -1,0 +1,15 @@
+{
+  "stackName": "demo-app",
+  "region": "us-west-2",
+  "tags": {
+    "project": "acdk-demo",
+    "owner": "platform-team"
+  },
+  "logLevel": "info",
+  "webApp": {
+    "image": "public.ecr.aws/nginx/nginx:latest",
+    "port": 80,
+    "cpu": "256",
+    "memory": "512"
+  }
+}

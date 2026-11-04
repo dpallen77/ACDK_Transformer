@@ -1,0 +1,5 @@
+{
+  "buckets": [
+    { "name": "logs-bucket", "versioned": true }
+  ]
+}
