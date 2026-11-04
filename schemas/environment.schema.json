@@ -27,6 +27,17 @@
       "type": "object",
       "propertyNames": { "maxLength": 128 },
       "additionalProperties": { "type": "string", "maxLength": 256 }
+    },
+    "regionOverrides": {
+      "description": "Values that differ by region (e.g. ECR image URIs, certificate ARNs). For each region, its object is merged over the rest of the environment when building that region's template.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z]{2}(-gov)?-[a-z]+-[0-9]$" },
+      "additionalProperties": {
+        "type": "object",
+        "not": {
+          "anyOf": [{ "required": ["region"] }, { "required": ["regionOverrides"] }]
+        }
+      }
     }
   },
   "additionalProperties": true

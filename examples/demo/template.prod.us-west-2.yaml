@@ -1,0 +1,93 @@
+Resources:
+  logsbucketE18563D9:
+    Type: AWS::S3::Bucket
+    Properties:
+      Tags:
+        - Key: environment
+          Value: prod
+        - Key: owner
+          Value: platform-team
+        - Key: project
+          Value: acdk-demo
+      VersioningConfiguration:
+        Status: Enabled
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  hellowebexecutionroleB152E5D9:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ''
+            - - 'arn:'
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Tags:
+        - Key: environment
+          Value: prod
+        - Key: owner
+          Value: platform-team
+        - Key: project
+          Value: acdk-demo
+  hellowebinfrastructureroleDF3EFA30:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ecs.amazonaws.com
+        Version: '2012-10-17'
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ''
+            - - 'arn:'
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonECSInfrastructureRoleforExpressGatewayServices
+      Tags:
+        - Key: environment
+          Value: prod
+        - Key: owner
+          Value: platform-team
+        - Key: project
+          Value: acdk-demo
+  helloweb:
+    Type: AWS::ECS::ExpressGatewayService
+    Properties:
+      Cpu: '1024'
+      ExecutionRoleArn:
+        Fn::GetAtt:
+          - hellowebexecutionroleB152E5D9
+          - Arn
+      HealthCheckPath: /
+      InfrastructureRoleArn:
+        Fn::GetAtt:
+          - hellowebinfrastructureroleDF3EFA30
+          - Arn
+      Memory: '2048'
+      PrimaryContainer:
+        ContainerPort: 80
+        Environment:
+          - Name: LOG_LEVEL
+            Value: info
+          - Name: APP_ENV
+            Value: prod
+          - Name: APP_REGION
+            Value: us-west-2
+        Image: public.ecr.aws/nginx/nginx:latest
+      ServiceName: hello-web
+      Tags:
+        - Key: environment
+          Value: prod
+        - Key: owner
+          Value: platform-team
+        - Key: project
+          Value: acdk-demo

@@ -29,14 +29,30 @@
       "pattern": "^[A-Za-z][A-Za-z0-9-]*$",
       "maxLength": 64
     },
+    "regions": {
+      "description": "Regions to deploy this resource to; one template is built per region. Default: the environment's \"region\". May be an ${env.<path>} placeholder for a list.",
+      "anyOf": [
+        {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^([a-z]{2}(-gov)?-[a-z]+-[0-9]|\\$\\{env\\.[A-Za-z0-9_.-]+\\})$"
+          }
+        },
+        { "$ref": "#/definitions/placeholder" }
+      ]
+    },
     "bucket": {
       "type": "object",
       "required": ["name"],
       "properties": {
         "name": {
-          "description": "Logical name of the bucket, unique within the stack.",
+          "description": "Logical name of the bucket, unique within the project.",
           "$ref": "#/definitions/name"
         },
+        "regions": { "$ref": "#/definitions/regions" },
         "versioned": {
           "description": "Keep previous versions of objects. Default: false.",
           "anyOf": [{ "type": "boolean" }, { "$ref": "#/definitions/placeholder" }]
@@ -49,9 +65,10 @@
       "required": ["name", "image"],
       "properties": {
         "name": {
-          "description": "Service name, unique within the stack.",
+          "description": "Service name, unique within the project.",
           "$ref": "#/definitions/name"
         },
+        "regions": { "$ref": "#/definitions/regions" },
         "image": {
           "description": "An existing container image URI (ECR, Docker Hub, ...).",
           "type": "string",

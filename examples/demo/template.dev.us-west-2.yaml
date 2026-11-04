@@ -80,6 +80,8 @@ Resources:
             Value: debug
           - Name: APP_ENV
             Value: dev
+          - Name: APP_REGION
+            Value: us-west-2
         Image: public.ecr.aws/nginx/nginx:latest
       ServiceName: hello-web
       Tags:
