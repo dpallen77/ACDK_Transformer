@@ -1,0 +1,15 @@
+{
+  "webApps": [
+    {
+      "name": "hello-web",
+      "image": "${env.webApp.image}",
+      "port": "${env.webApp.port}",
+      "cpu": "${env.webApp.cpu}",
+      "memory": "${env.webApp.memory}",
+      "environment": {
+        "LOG_LEVEL": "${env.logLevel}",
+        "APP_ENV": "${env.tags.environment}"
+      }
+    }
+  ]
+}

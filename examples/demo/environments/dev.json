@@ -1,0 +1,5 @@
+{
+  "account": "111111111111",
+  "tags": { "environment": "dev" },
+  "logLevel": "debug"
+}
