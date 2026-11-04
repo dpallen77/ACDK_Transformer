@@ -18,15 +18,22 @@ npm run synth -- --env dev  --dir examples/demo
 npm run synth -- --env prod --dir examples/demo
 ```
 
-This writes `examples/demo/template.dev.yaml` and `examples/demo/template.prod.yaml`.
+One template is written per environment and region, named `template.<env>.<region>.yaml`.
+The demo's dev environment uses one region and prod uses two, so this writes:
+
+```
+examples/demo/template.dev.us-west-2.yaml
+examples/demo/template.prod.us-west-2.yaml
+examples/demo/template.prod.eu-west-1.yaml
+```
 
 Options:
 
-| Option         | Meaning                                                  |
-| -------------- | -------------------------------------------------------- |
-| `--env <name>` | Required. Uses `environments/<name>.json`.               |
-| `--dir <path>` | The project folder to read. Default: current directory.  |
-| `--out <path>` | Where to write the template. Default: the project folder. |
+| Option         | Meaning                                                    |
+| -------------- | ---------------------------------------------------------- |
+| `--env <name>` | Required. Uses `environments/<name>.json`.                 |
+| `--dir <path>` | The project folder to read. Default: current directory.    |
+| `--out <path>` | Where to write the templates. Default: the project folder. |
 
 ## Add your own project
 
@@ -41,8 +48,8 @@ Options:
        web.json      # any number of resource files
    ```
 
-2. Put shared settings in `environments/common.json`. `stackName` is required
-   (here or in the environment file):
+2. Put shared settings in `environments/common.json`. `stackName` and `region` are
+   required (here or in the environment file):
 
    ```json
    {
@@ -85,16 +92,61 @@ Options:
 
 ## Settings the tool reads from environment files
 
-| Key         | Required | Meaning                                         |
-| ----------- | -------- | ----------------------------------------------- |
-| `stackName` | yes      | Name of the CloudFormation stack                |
-| `account`   | no       | AWS account ID for the stack                    |
-| `region`    | no       | AWS region for the stack                        |
-| `tags`      | no       | Tags added to every resource                    |
+| Key               | Required | Meaning                                                       |
+| ----------------- | -------- | ------------------------------------------------------------- |
+| `stackName`       | yes      | Name of the CloudFormation stack (the same in every region)   |
+| `region`          | yes      | Default AWS region for resources without `regions`            |
+| `account`         | no       | AWS account ID for the stack                                  |
+| `tags`            | no       | Tags added to every resource                                  |
+| `regionOverrides` | no       | Values that differ by region; see [Multiple regions](#multiple-regions) |
 
 Any other keys are yours to define and reference with `${env.<path>}`.
 
+## Multiple regions
+
+CloudFormation stacks belong to one region, so the tool writes one template per region.
+
+Each resource goes to the environment's `region` unless it has a `regions` list:
+
+```json
+{ "webApps": [{ "name": "web", "image": "...", "regions": ["us-west-2", "eu-west-1"] }] }
+```
+
+To deploy to one region in dev and several in prod from the same resource file, take
+the list from the environment files:
+
+```json
+// resources/web.json
+{ "webApps": [{ "name": "web", "image": "...", "regions": "${env.webApp.regions}" }] }
+
+// environments/common.json:  "webApp": { "regions": ["us-west-2"] }
+// environments/prod.json:    "webApp": { "regions": ["us-west-2", "eu-west-1"] }
+```
+
+Some values really are per region, such as private ECR image URIs and certificate
+ARNs. Put them under `regionOverrides`; for that region they are merged over the rest
+of the environment:
+
+```json
+{
+  "webApp": { "image": "111111111111.dkr.ecr.us-west-2.amazonaws.com/web:1.4" },
+  "regionOverrides": {
+    "eu-west-1": {
+      "webApp": { "image": "111111111111.dkr.ecr.eu-west-1.amazonaws.com/web:1.4" }
+    }
+  }
+}
+```
+
+`${env.region}` always gives the region being built, e.g. for an environment variable:
+`"environment": { "APP_REGION": "${env.region}" }`.
+
+Resource names must be unique across all resource files; a resource in several
+regions keeps its one name.
+
 ## Resource types
+
+Every resource type also accepts `regions` (see above).
 
 **`buckets`**: S3 buckets.
 

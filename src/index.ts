@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
-import { loadEnvironment, loadResources, resolvePlaceholders } from "./config.js";
+import { environmentForRegion, loadEnvironment, loadResources, planRegions } from "./config.js";
 import { synthesize, type EnvironmentConfig, type ResourcesConfig } from "./synth.js";
 import { validate } from "./validate.js";
 
@@ -26,14 +26,23 @@ export function main(argv: string[]): void {
   const outDir = values.out ?? projectDir;
   try {
     const env = loadEnvironment(projectDir, values.env);
-    const resources = resolvePlaceholders(loadResources(projectDir), env);
-    // Check again with real values: a placeholder may bring in a wrong type or value.
-    validate("resources", resources, `Resources with "${values.env}" environment values filled in`);
+    const entries = loadResources(projectDir);
+    if (entries.length === 0) throw new Error(`No resources found in ${path.join(projectDir, "resources")}`);
+    const plan = planRegions(env, entries);
 
-    const yamlText = synthesize(env as unknown as EnvironmentConfig, resources as ResourcesConfig);
-    const outFile = path.join(outDir, `template.${values.env}.yaml`);
-    fs.writeFileSync(outFile, yamlText);
-    console.log(`Wrote ${outFile}`);
+    // Build every template before writing any, so an error leaves no partial output.
+    const outputs: Array<[string, string]> = [];
+    for (const [region, resources] of plan) {
+      // Check again with real values: a placeholder may bring in a wrong type or value.
+      validate("resources", resources, `Resources for "${values.env}" in ${region}`);
+      const regionalEnv = environmentForRegion(env, region);
+      const yamlText = synthesize(regionalEnv as unknown as EnvironmentConfig, resources as ResourcesConfig);
+      outputs.push([path.join(outDir, `template.${values.env}.${region}.yaml`), yamlText]);
+    }
+    for (const [file, text] of outputs) {
+      fs.writeFileSync(file, text);
+      console.log(`Wrote ${file}`);
+    }
   } catch (err) {
     console.error(`Error: ${(err as Error).message}`);
     process.exit(1);

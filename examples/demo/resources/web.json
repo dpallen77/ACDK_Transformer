@@ -2,13 +2,15 @@
   "webApps": [
     {
       "name": "hello-web",
+      "regions": "${env.webApp.regions}",
       "image": "${env.webApp.image}",
       "port": "${env.webApp.port}",
       "cpu": "${env.webApp.cpu}",
       "memory": "${env.webApp.memory}",
       "environment": {
         "LOG_LEVEL": "${env.logLevel}",
-        "APP_ENV": "${env.tags.environment}"
+        "APP_ENV": "${env.tags.environment}",
+        "APP_REGION": "${env.region}"
       }
     }
   ]

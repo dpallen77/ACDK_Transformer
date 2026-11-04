@@ -42,28 +42,89 @@ export function loadEnvironment(projectDir: string, envName: string): JsonObject
   validate("environment", envValues, `environments/${envName}.json`);
 
   const merged = deepMerge(common, envValues);
-  // Individual files may omit stackName; the merged result may not.
-  if (merged.stackName === undefined) {
-    throw new Error(`"stackName" must be set in environments/common.json or environments/${envName}.json`);
+  // Individual files may omit these; the merged result may not.
+  for (const key of ["stackName", "region"]) {
+    if (merged[key] === undefined) {
+      throw new Error(`"${key}" must be set in environments/common.json or environments/${envName}.json`);
+    }
   }
   return merged;
 }
 
-/** Every resources/*.json file, with same-named lists concatenated. */
-export function loadResources(projectDir: string): JsonObject {
+/**
+ * The environment as seen from one region: `regionOverrides.<region>` merged in,
+ * and `region` set to that region (so `${env.region}` always means "this region").
+ */
+export function environmentForRegion(env: JsonObject, region: string): JsonObject {
+  const { regionOverrides, ...base } = env;
+  const overrides = isObject(regionOverrides) && isObject(regionOverrides[region]) ? regionOverrides[region] : {};
+  const regional = { ...deepMerge(base, overrides), region };
+  validate("environment", regional, `Environment values for ${region}`);
+  return regional;
+}
+
+/** One resource entry (a bucket, a web app, ...) and the file it came from. */
+export interface ResourceEntry {
+  kind: string;
+  item: JsonObject;
+  source: string;
+}
+
+/** Every entry in every resources/*.json file. Names must be unique across all of them. */
+export function loadResources(projectDir: string): ResourceEntry[] {
   const dir = path.join(projectDir, "resources");
   const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith(".json")).sort() : [];
-  const out: JsonObject = {};
+  const entries: ResourceEntry[] = [];
+  const seen = new Map<string, string>();
   for (const file of files) {
+    const source = `resources/${file}`;
     const content = readJson(path.join(dir, file));
-    validate("resources", content, `resources/${file}`);
-    for (const [key, value] of Object.entries(content)) {
-      if (key === "$schema" || !Array.isArray(value)) continue;
-      const existing = out[key];
-      out[key] = Array.isArray(existing) ? [...existing, ...value] : value;
+    validate("resources", content, source);
+    for (const [kind, list] of Object.entries(content)) {
+      if (kind === "$schema" || !Array.isArray(list)) continue;
+      for (const item of list) {
+        if (!isObject(item)) continue;
+        const name = String(item.name);
+        const first = seen.get(name);
+        if (first) {
+          const where = first === source ? `twice in ${source}` : `in both ${first} and ${source}`;
+          throw new Error(`The name "${name}" is used ${where}; resource names must be unique`);
+        }
+        seen.set(name, source);
+        entries.push({ kind, item, source });
+      }
     }
   }
-  return out;
+  return entries;
+}
+
+/**
+ * Work out which regions each resource goes to and resolve its placeholders with that
+ * region's environment values. Returns the resources to deploy, grouped by region.
+ * A resource without `regions` goes to the environment's `region`.
+ */
+export function planRegions(env: JsonObject, entries: ResourceEntry[]): Map<string, JsonObject> {
+  const plan = new Map<string, JsonObject>();
+  const envByRegion = new Map<string, JsonObject>();
+  const regionalEnv = (region: string): JsonObject => {
+    if (!envByRegion.has(region)) envByRegion.set(region, environmentForRegion(env, region));
+    return envByRegion.get(region)!;
+  };
+  for (const { kind, item, source } of entries) {
+    const { regions: rawRegions, ...rest } = item;
+    const where = `${source} ("${String(item.name)}")`;
+    const regions = rawRegions === undefined ? [env.region] : resolvePlaceholders(rawRegions, env, `${where}.regions`);
+    if (!Array.isArray(regions) || regions.length === 0 || !regions.every((r) => typeof r === "string")) {
+      throw new Error(`${where}: "regions" must be a non-empty list of region names`);
+    }
+    for (const region of new Set(regions as string[])) {
+      if (!plan.has(region)) plan.set(region, {});
+      const forRegion = plan.get(region)!;
+      const resolved = resolvePlaceholders(rest, regionalEnv(region), where);
+      forRegion[kind] = [...((forRegion[kind] as Json[] | undefined) ?? []), resolved];
+    }
+  }
+  return plan;
 }
 
 const PLACEHOLDER = /\$\{env\.([A-Za-z0-9_.-]+)\}/g;
