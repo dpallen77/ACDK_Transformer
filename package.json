@@ -9,6 +9,7 @@
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
+    "synth": "tsx src/index.ts synth",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
