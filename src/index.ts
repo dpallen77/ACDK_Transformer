@@ -3,6 +3,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { loadEnvironment, loadResources, resolvePlaceholders } from "./config.js";
 import { synthesize, type EnvironmentConfig, type ResourcesConfig } from "./synth.js";
+import { validate } from "./validate.js";
 
 const USAGE = "Usage: acdk synth --env <name> [--dir <project dir>] [--out <output dir>]";
 
@@ -25,10 +26,9 @@ export function main(argv: string[]): void {
   const outDir = values.out ?? projectDir;
   try {
     const env = loadEnvironment(projectDir, values.env);
-    if (typeof env.stackName !== "string") {
-      throw new Error(`"stackName" must be set in environments/common.json or ${values.env}.json`);
-    }
     const resources = resolvePlaceholders(loadResources(projectDir), env);
+    // Check again with real values: a placeholder may bring in a wrong type or value.
+    validate("resources", resources, `Resources with "${values.env}" environment values filled in`);
 
     const yamlText = synthesize(env as unknown as EnvironmentConfig, resources as ResourcesConfig);
     const outFile = path.join(outDir, `template.${values.env}.yaml`);

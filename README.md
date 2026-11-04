@@ -6,7 +6,7 @@ for the design background.
 
 ## Prerequisites
 
-- Node.js 20 or later
+- Node.js 22 or later
 - `npm install` once in the repo root
 
 No AWS credentials are needed to generate templates.
@@ -123,5 +123,35 @@ Azure App Service). Uses the account's default VPC. The tool creates the IAM rol
 - An unknown path stops the run and says where it is, e.g.
   `Unknown placeholder ${env.webApp.cpuu} at resources.webApps[0].cpu`.
 
-Field names in resource files are not validated yet, so a misspelt field
-(e.g. `"memmory"`) is silently ignored.
+## Validation
+
+Every file is checked against the JSON Schemas in [schemas/](schemas/):
+
+- [environment.schema.json](schemas/environment.schema.json) for `environments/*.json`
+- [resources.schema.json](schemas/resources.schema.json) for `resources/*.json`
+
+Misspelt fields, missing required fields and wrong types stop the run with every
+problem listed:
+
+```
+Error: resources/web.json is not valid:
+  /webApps/0: unknown field "memmory"
+  /webApps/0/port: must be integer (or an ${env.…} placeholder)
+```
+
+Resource files are checked twice: once as written (any field may be a placeholder),
+and again after placeholders are filled in, so a bad value in an environment file
+(e.g. `"cpu": "300"`) is caught too. Environment files may contain extra keys of your
+own; resource files may not.
+
+**In VS Code** this repo's [.vscode/settings.json](.vscode/settings.json) applies the
+schemas automatically, giving autocomplete and red underlines as you type. Outside
+this repo, add a `"$schema"` key pointing at the schema file, e.g.
+`"$schema": "../../../schemas/resources.schema.json"`.
+
+## Development
+
+```sh
+npm test           # run the tests
+npm run typecheck  # type-check without building
+```

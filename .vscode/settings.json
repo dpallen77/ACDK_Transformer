@@ -1,0 +1,12 @@
+{
+  "json.schemas": [
+    {
+      "fileMatch": ["**/environments/*.json"],
+      "url": "./schemas/environment.schema.json"
+    },
+    {
+      "fileMatch": ["**/resources/*.json"],
+      "url": "./schemas/resources.schema.json"
+    }
+  ]
+}
